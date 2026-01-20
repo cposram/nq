@@ -153,15 +153,25 @@
             lastPrices[data.symbol] = price;
         }
 
-        function sendPush(msg) {
-            if (!PB_TOKEN) return;
-            fetch('https://api.pushbullet.com/v2/pushes', {
-                method: 'POST',
-                headers: { 'Access-Token': PB_TOKEN, 'Content-Type': 'application/json' },
-                body: JSON.stringify({ type: 'note', title: '台股監控告警', body: msg, email: EMAIL })
-            })
-            .then(res => res.ok ? addLog("[成功] 推播已送出") : addLog("[失敗] API 響應錯誤，請檢查 Token"));
+       function sendPush(msg) {
+    if (!PB_TOKEN) return;
+    fetch('https://api.pushbullet.com/v2/pushes', {
+        method: 'POST',
+        headers: { 'Access-Token': PB_TOKEN, 'Content-Type': 'application/json' },
+        body: JSON.stringify({ type: 'note', title: '台股監控告警', body: msg })
+    })
+    .then(res => {
+        if (res.ok) {
+            addLog("[成功] 推播已送出");
+        } else {
+            // 顯示具體錯誤代碼，如 401 (Token錯誤) 或 403 (權限不足)
+            addLog(`[失敗] 伺服器回傳代碼: ${res.status}`);
+            if (res.status === 401) addLog("-> 請檢查 Token 是否正確或已過期");
+            if (res.status === 403) addLog("-> Token 權限不足");
         }
+    })
+    .catch(err => addLog(`[連線錯誤] ${err.message}`));
+}
 
         function addLog(msg) {
             const box = document.getElementById('log-box');
