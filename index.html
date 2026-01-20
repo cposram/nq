@@ -39,22 +39,28 @@
         let lastPrices = {};
 
         async function fetchData() {
-            document.getElementById('status').innerText = "更新時間: " + new Date().toLocaleTimeString();
-            
-            for (let item of symbols) {
-                try {
-                    const response = await fetch(`https://api.twelvedata.com/quote?symbol=${item.id}&apikey=${TWELVE_DATA_API_KEY}`);
-                    const data = await response.json();
-                    
-                    if (data.symbol) {
-                        updateUI(data, item.name);
-                        checkAlerts(data, item.name);
-                    }
-                } catch (e) {
-                    console.error("抓取失敗", e);
-                }
+    document.getElementById('status').innerText = "更新時間: " + new Date().toLocaleTimeString();
+    
+    // 將所有代號用逗號隔開，合併成一個請求
+    const symbolList = symbols.map(s => s.id).join(',');
+    
+    try {
+        // 使用 /quote 端點並傳入多個 symbol
+        const response = await fetch(`https://api.twelvedata.com/quote?symbol=${symbolList}&apikey=${TWELVE_DATA_API_KEY}`);
+        const data = await response.json();
+        
+        // 處理回傳的多個數據
+        symbols.forEach(item => {
+            const stockData = data[item.id] || data; // 如果只有一個代號，結構會略有不同
+            if (stockData && stockData.symbol) {
+                updateUI(stockData, item.name);
+                checkAlerts(stockData, item.name);
             }
-        }
+        });
+    } catch (e) {
+        console.error("抓取失敗", e);
+    }
+}
 
         function updateUI(data, name) {
             let container = document.getElementById('dashboard');
