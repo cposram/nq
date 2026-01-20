@@ -2,36 +2,37 @@
 <html lang="zh-TW">
 <head>
     <meta charset="UTF-8">
-    <title>台股分層監控看板 - 修復版</title>
+    <title>台股戰情室 | Dali Terminal</title>
     <style>
-        :root { --up: #ff4d4d; --down: #00ff00; --bg: #0d0d0d; --card: #1a1a1a; --accent: #00a2ff; }
-        body { font-family: "Segoe UI", "Microsoft JhengHei", sans-serif; background: var(--bg); color: #fff; margin: 0; padding: 20px; }
-        .container { max-width: 1100px; margin: 0 auto; }
-        .section-title { font-size: 15px; color: #888; margin: 25px 0 10px 0; padding-left: 10px; border-left: 4px solid #444; }
+        :root { --up: #ff4d4d; --down: #00ff00; --bg: #0d0d0d; --card: #161616; --accent: #00a2ff; }
+        body { font-family: "Segoe UI", "Microsoft JhengHei", sans-serif; background: var(--bg); color: #fff; margin: 0; padding: 20px; overflow-x: hidden; }
+        .container { max-width: 1000px; margin: 0 auto; }
+        .header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px; }
+        .section-title { font-size: 14px; color: #666; margin: 20px 0 10px 0; padding-left: 10px; border-left: 4px solid #333; }
         .level1-title { color: var(--accent); border-color: var(--accent); }
-        .grid { display: grid; gap: 15px; margin-bottom: 25px; }
-        .l1-grid { grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)); }
+        .grid { display: grid; gap: 15px; margin-bottom: 20px; }
+        .l1-grid { grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); }
         .l2-grid { grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); }
         .l3-grid { grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); }
-        .card { background: var(--card); border-radius: 10px; padding: 20px; border: 1px solid #333; }
-        .l1-card { border-top: 3px solid var(--accent); }
-        .label { color: #aaa; font-size: 14px; margin-bottom: 8px; display: flex; justify-content: space-between; }
-        .price { font-size: 36px; font-weight: bold; font-family: 'Consolas', monospace; }
-        .change { font-size: 20px; font-weight: bold; margin-top: 10px; }
+        .card { background: var(--card); border-radius: 12px; padding: 20px; border: 1px solid #222; position: relative; }
+        .l1-card { border-top: 3px solid var(--accent); background: #1a1a1a; }
+        .label { color: #888; font-size: 14px; margin-bottom: 8px; display: flex; justify-content: space-between; }
+        .price { font-size: 38px; font-weight: bold; font-family: 'Consolas', monospace; letter-spacing: -1px; }
+        .change { font-size: 20px; font-weight: bold; margin-top: 8px; }
         .up { color: var(--up); } .down { color: var(--down); }
-        .tag { font-size: 10px; padding: 2px 6px; border-radius: 4px; background: #333; }
-        .live { background: #ad1457; }
-        .log-box { background: #000; padding: 15px; border-radius: 8px; font-family: monospace; font-size: 12px; color: #00ff00; height: 100px; overflow-y: auto; border: 1px solid #222; }
+        .tag { font-size: 10px; padding: 2px 5px; border-radius: 4px; background: #333; text-transform: uppercase; }
+        .live { background: #ad1457; color: white; }
+        .log-box { background: #000; padding: 12px; border-radius: 8px; font-family: monospace; font-size: 12px; color: #00ff00; height: 90px; overflow-y: auto; border: 1px solid #222; }
     </style>
 </head>
 <body>
     <div class="container">
-        <div style="display:flex; justify-content:space-between; align-items:flex-end;">
-            <h2 style="margin:0;">📊 台股戰情室 <small style="font-size:12px; color:#666;">Dali Terminal</small></h2>
-            <div id="status" style="font-size:12px; color:#888;">連線中...</div>
+        <div class="header">
+            <h2 style="margin:0;">📊 台股戰情室 <small style="font-size:12px; color:#555;">Dali Terminal</small></h2>
+            <div id="status" style="font-size:12px; color:#888;">數據同步中...</div>
         </div>
 
-        <div class="section-title level1-title">LEVEL 1: 核心動態 (每分鐘更新)</div>
+        <div class="section-title level1-title">LEVEL 1: 核心動態 (每分鐘更新 - 影響盤中進場)</div>
         <div class="grid l1-grid" id="level1-display"></div>
 
         <div class="section-title">LEVEL 2: 區域流向 (每 5 分鐘更新)</div>
@@ -40,24 +41,32 @@
         <div class="section-title">LEVEL 3: 靜態存檔 (不消耗 Token)</div>
         <div class="grid l3-grid" id="level3-display"></div>
 
-        <div class="log-box" id="log-box">系統日誌：等待 API 響應...<br></div>
+        <div class="log-box" id="log-box">系統啟動：已將匯率移除，專注 NQ 與 富台指...<br></div>
     </div>
 
     <script>
-        // --- 設定區 ---
         const API_KEY = '0227846f1dd54d49973171d9bcd91a27';
-        const PB_TOKEN = '請填入你的PB_TOKEN'; // 為了安全建議手動填入一次
-        
+        const PB_TOKEN = '請填入你的PB_TOKEN'; // 建議手動填入
+
+        // --- 核心配置 ---
         const CONFIG = {
-            level1: [ { id: 'NQ', name: '小那期貨' }, { id: 'EWT', name: '富台指' }, { id: 'USD/TWD', name: '台幣匯率' } ],
-            level2: [ { id: 'NI225', name: '日經 225' }, { id: 'KS11', name: '韓國綜合' } ],
-            level3: [ { id: 'TSM', name: '台積電 ADR' }, { id: 'QQQ', name: '那指昨收' } ]
+            level1: [
+                { id: 'NQ', name: '小那期貨' },    // Nasdaq Mini Futures
+                { id: 'TWN', name: '富台指數' }    // FTSE Taiwan Index (SGX)
+            ],
+            level2: [
+                { id: 'NI225', name: '日經 225' },
+                { id: 'KS11', name: '韓國綜合' }
+            ],
+            level3: [
+                { id: 'TSM', name: '台積電 ADR' },
+                { id: 'QQQ', name: '那指昨收' }
+            ]
         };
 
         let lastPrices = {};
 
-        // 通用的抓取與渲染函式
-        async function updateMarketData(level) {
+        async function updateMarket(level) {
             const symbols = CONFIG[level].map(s => s.id).join(',');
             const url = `https://api.twelvedata.com/quote?symbol=${symbols}&apikey=${API_KEY}`;
             
@@ -70,18 +79,19 @@
                     if (result && result.close) {
                         renderCard(result, item.name, level);
                         if (level === 'level1') checkAlerts(result, item.name);
+                    } else {
+                        addLog(`[提醒] ${item.name} 數據暫無更新 (API 權限限制)`);
                     }
                 });
                 document.getElementById('status').innerText = `最後同步: ${new Date().toLocaleTimeString()}`;
             } catch (e) {
-                addLog(`[錯誤] ${level} 抓取失敗: ${e.message}`);
+                addLog(`[錯誤] ${level} 抓取失敗`);
             }
         }
 
         function renderCard(data, displayName, level) {
-            const containerId = `${level}-display`;
-            const container = document.getElementById(containerId);
-            if (!container) return; // 防止 appendChild 到 null
+            const container = document.getElementById(`${level}-display`);
+            if (!container) return;
 
             let card = document.getElementById(`card-${data.symbol}`);
             if (!card) {
@@ -93,9 +103,10 @@
 
             const change = parseFloat(data.percent_change) || 0;
             const color = change >= 0 ? 'up' : 'down';
+            
             card.innerHTML = `
                 <div class="label">${displayName} <span class="tag ${level !== 'level3' ? 'live' : ''}">${level !== 'level3' ? 'LIVE' : 'REF'}</span></div>
-                <div class="price">${parseFloat(data.close).toFixed(data.symbol.includes('TWD') ? 3 : 2)}</div>
+                <div class="price">${parseFloat(data.close).toLocaleString(undefined, {minimumFractionDigits: 2})}</div>
                 <div class="change ${color}">${change >= 0 ? '+' : ''}${change.toFixed(2)}%</div>
             `;
         }
@@ -104,20 +115,20 @@
             const price = parseFloat(data.close);
             if (lastPrices[data.symbol]) {
                 const diff = ((price - lastPrices[data.symbol]) / lastPrices[data.symbol]) * 100;
-                if (Math.abs(diff) >= 0.12) {
-                    sendPush(`⚡ ${name} ${diff > 0 ? '急拉' : '急殺'} ${diff.toFixed(2)}%`);
+                if (Math.abs(diff) >= 0.1) { // 萬一波動 0.1% 就報警
+                    sendPush(`⚡ ${name} 劇烈震盪：${diff > 0 ? '急拉' : '急殺'} ${diff.toFixed(2)}%`);
                 }
             }
             lastPrices[data.symbol] = price;
         }
 
         function sendPush(msg) {
-            addLog(`[發送通知] ${msg}`);
-            if (PB_TOKEN.length < 5) return;
+            addLog(`[通知] ${msg}`);
+            if (!PB_TOKEN || PB_TOKEN.length < 5) return;
             fetch('https://api.pushbullet.com/v2/pushes', {
                 method: 'POST',
                 headers: { 'Access-Token': PB_TOKEN, 'Content-Type': 'application/json' },
-                body: JSON.stringify({ type: 'note', title: '台股監控', body: msg, email: 'cposram@gmail.com' })
+                body: JSON.stringify({ type: 'note', title: '台股監控告警', body: msg, email: 'cposram@gmail.com' })
             });
         }
 
@@ -126,15 +137,12 @@
             box.innerHTML = `[${new Date().toLocaleTimeString()}] ${msg}<br>` + box.innerHTML;
         }
 
-        // --- 啟動邏輯 ---
         window.onload = () => {
-            updateMarketData('level1');
-            updateMarketData('level2');
-            updateMarketData('level3');
-
-            // 分頻率更新
-            setInterval(() => updateMarketData('level1'), 60000);  // 1分鐘
-            setInterval(() => updateMarketData('level2'), 300000); // 5分鐘
+            updateMarket('level1');
+            updateMarket('level2');
+            updateMarket('level3');
+            setInterval(() => updateMarket('level1'), 60000);
+            setInterval(() => updateMarket('level2'), 300000);
         };
     </script>
 </body>
