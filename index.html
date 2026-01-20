@@ -2,118 +2,100 @@
 <html lang="zh-TW">
 <head>
     <meta charset="UTF-8">
-    <title>台股分層監控看板</title>
+    <title>台股分層監控看板 - 修復版</title>
     <style>
-        :root { --up: #ff4d4d; --down: #00ff00; --bg: #0a0a0a; --card: #161616; --accent: #007bff; }
-        body { font-family: -apple-system, "Microsoft JhengHei", sans-serif; background: var(--bg); color: #fff; margin: 0; padding: 15px; }
-        .container { max-width: 1200px; margin: 0 auto; }
-        
-        /* 分層標題 */
-        .section-title { font-size: 14px; color: #666; margin: 20px 0 10px 10px; border-left: 3px solid #444; padding-left: 8px; text-transform: uppercase; }
-        .section-title.level1 { color: var(--accent); border-color: var(--accent); }
-
-        /* 網格佈局 */
-        .grid { display: grid; gap: 12px; margin-bottom: 20px; }
-        .l1-grid { grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); }
-        .l2-grid { grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); }
-        .l3-grid { grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); }
-
-        /* 卡片樣式 */
-        .card { background: var(--card); border-radius: 8px; padding: 15px; border: 1px solid #222; position: relative; }
-        .l1-card { border-top: 2px solid var(--accent); padding: 20px; }
-        .l3-card { opacity: 0.7; background: #0f0f0f; }
-
-        .label { font-size: 13px; color: #888; margin-bottom: 5px; display: flex; justify-content: space-between; }
-        .price { font-size: 28px; font-weight: bold; font-family: 'Consolas', monospace; }
-        .l1-price { font-size: 38px; }
-        .change { font-size: 18px; font-weight: bold; margin-top: 5px; }
+        :root { --up: #ff4d4d; --down: #00ff00; --bg: #0d0d0d; --card: #1a1a1a; --accent: #00a2ff; }
+        body { font-family: "Segoe UI", "Microsoft JhengHei", sans-serif; background: var(--bg); color: #fff; margin: 0; padding: 20px; }
+        .container { max-width: 1100px; margin: 0 auto; }
+        .section-title { font-size: 15px; color: #888; margin: 25px 0 10px 0; padding-left: 10px; border-left: 4px solid #444; }
+        .level1-title { color: var(--accent); border-color: var(--accent); }
+        .grid { display: grid; gap: 15px; margin-bottom: 25px; }
+        .l1-grid { grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)); }
+        .l2-grid { grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); }
+        .l3-grid { grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); }
+        .card { background: var(--card); border-radius: 10px; padding: 20px; border: 1px solid #333; }
+        .l1-card { border-top: 3px solid var(--accent); }
+        .label { color: #aaa; font-size: 14px; margin-bottom: 8px; display: flex; justify-content: space-between; }
+        .price { font-size: 36px; font-weight: bold; font-family: 'Consolas', monospace; }
+        .change { font-size: 20px; font-weight: bold; margin-top: 10px; }
         .up { color: var(--up); } .down { color: var(--down); }
-        
-        .tag { font-size: 10px; padding: 2px 5px; border-radius: 3px; background: #333; vertical-align: middle; }
-        .tag.live { background: #ad1457; color: white; }
-        
-        .status-bar { font-size: 11px; color: #444; text-align: right; margin-bottom: 10px; }
-        .log-box { background: #000; padding: 10px; border-radius: 5px; font-family: monospace; font-size: 11px; color: #00ff00; height: 80px; overflow-y: auto; border: 1px solid #222; }
+        .tag { font-size: 10px; padding: 2px 6px; border-radius: 4px; background: #333; }
+        .live { background: #ad1457; }
+        .log-box { background: #000; padding: 15px; border-radius: 8px; font-family: monospace; font-size: 12px; color: #00ff00; height: 100px; overflow-y: auto; border: 1px solid #222; }
     </style>
 </head>
 <body>
     <div class="container">
-        <div class="status-bar" id="sys-status">系統初始化中...</div>
+        <div style="display:flex; justify-content:space-between; align-items:flex-end;">
+            <h2 style="margin:0;">📊 台股戰情室 <small style="font-size:12px; color:#666;">Dali Terminal</small></h2>
+            <div id="status" style="font-size:12px; color:#888;">連線中...</div>
+        </div>
 
-        <div class="section-title level1">Level 1: 核心動態 (每分鐘更新 - 影響盤中進場)</div>
-        <div class="grid l1-grid" id="l1-display"></div>
+        <div class="section-title level1-title">LEVEL 1: 核心動態 (每分鐘更新)</div>
+        <div class="grid l1-grid" id="level1-display"></div>
 
-        <div class="section-title">Level 2: 區域流向 (每 5 分鐘更新 - 判斷亞股氣氛)</div>
-        <div class="grid l2-grid" id="l2-display"></div>
+        <div class="section-title">LEVEL 2: 區域流向 (每 5 分鐘更新)</div>
+        <div class="grid l2-grid" id="level2-display"></div>
 
-        <div class="section-title">Level 3: 靜態存檔 (不更新 - 昨收參考)</div>
-        <div class="grid l3-grid" id="l3-display"></div>
+        <div class="section-title">LEVEL 3: 靜態存檔 (不消耗 Token)</div>
+        <div class="grid l3-grid" id="level3-display"></div>
 
-        <div class="log-box" id="log">系統日誌：等待數據載入...<br></div>
+        <div class="log-box" id="log-box">系統日誌：等待 API 響應...<br></div>
     </div>
 
     <script>
-        const TD_KEY = '0227846f1dd54d49973171d9bcd91a27';
-        const PB_TOKEN = '請在此處填入你的_Pushbullet_Token'; // 安全考量，建議手動貼入一次
-
-        const SYMBOLS = {
-            level1: [
-                { id: 'NQ', name: '小那斯達克期貨' },
-                { id: 'EWT', name: '富台指/MSCI台灣' },
-                { id: 'USD/TWD', name: '美元匯率' }
-            ],
-            level2: [
-                { id: 'NI225', name: '日經 225' },
-                { id: 'KS11', name: '韓國綜合' }
-            ],
-            level3: [
-                { id: 'TSM', name: '台積電 ADR (昨收)' },
-                { id: 'QQQ', name: '那斯達克 (昨收)' },
-                { id: 'SPY', name: '標普 500 (昨收)' }
-            ]
+        // --- 設定區 ---
+        const API_KEY = '0227846f1dd54d49973171d9bcd91a27';
+        const PB_TOKEN = '請填入你的PB_TOKEN'; // 為了安全建議手動填入一次
+        
+        const CONFIG = {
+            level1: [ { id: 'NQ', name: '小那期貨' }, { id: 'EWT', name: '富台指' }, { id: 'USD/TWD', name: '台幣匯率' } ],
+            level2: [ { id: 'NI225', name: '日經 225' }, { id: 'KS11', name: '韓國綜合' } ],
+            level3: [ { id: 'TSM', name: '台積電 ADR' }, { id: 'QQQ', name: '那指昨收' } ]
         };
 
         let lastPrices = {};
 
-        // 核心抓取函式 (可傳入不同等級)
-        async function fetchData(level) {
-            const list = SYMBOLS[level].map(s => s.id).join(',');
-            const url = `https://api.twelvedata.com/quote?symbol=${list}&apikey=${TD_KEY}`;
+        // 通用的抓取與渲染函式
+        async function updateMarketData(level) {
+            const symbols = CONFIG[level].map(s => s.id).join(',');
+            const url = `https://api.twelvedata.com/quote?symbol=${symbols}&apikey=${API_KEY}`;
             
             try {
-                const res = await fetch(url);
-                const data = await res.json();
+                const response = await fetch(url);
+                const data = await response.json();
                 
-                SYMBOLS[level].forEach(sym => {
-                    const result = data[sym.id] || data;
-                    if(result && result.close) {
-                        renderCard(result, sym.name, level);
-                        if(level === 'level1') checkAlerts(result, sym.name);
+                CONFIG[level].forEach(item => {
+                    const result = data[item.id] || data;
+                    if (result && result.close) {
+                        renderCard(result, item.name, level);
+                        if (level === 'level1') checkAlerts(result, item.name);
                     }
                 });
-                updateStatus();
+                document.getElementById('status').innerText = `最後同步: ${new Date().toLocaleTimeString()}`;
             } catch (e) {
-                writeLog(`[錯誤] ${level} 抓取失敗: ${e.message}`);
+                addLog(`[錯誤] ${level} 抓取失敗: ${e.message}`);
             }
         }
 
-        function renderCard(data, name, level) {
-            const container = document.getElementById(`${level}-display`);
+        function renderCard(data, displayName, level) {
+            const containerId = `${level}-display`;
+            const container = document.getElementById(containerId);
+            if (!container) return; // 防止 appendChild 到 null
+
             let card = document.getElementById(`card-${data.symbol}`);
             if (!card) {
                 card = document.createElement('div');
                 card.id = `card-${data.symbol}`;
-                card.className = `card ${level}-card`;
+                card.className = `card ${level === 'level1' ? 'l1-card' : ''}`;
                 container.appendChild(card);
             }
 
             const change = parseFloat(data.percent_change) || 0;
             const color = change >= 0 ? 'up' : 'down';
-            const isLive = (level !== 'level3');
-
             card.innerHTML = `
-                <div class="label">${name} ${isLive ? '<span class="tag live">LIVE</span>' : '<span class="tag">STATIC</span>'}</div>
-                <div class="price ${level === 'level1' ? 'l1-price' : ''}">${parseFloat(data.close).toFixed(data.symbol.includes('TWD') ? 3 : 2)}</div>
+                <div class="label">${displayName} <span class="tag ${level !== 'level3' ? 'live' : ''}">${level !== 'level3' ? 'LIVE' : 'REF'}</span></div>
+                <div class="price">${parseFloat(data.close).toFixed(data.symbol.includes('TWD') ? 3 : 2)}</div>
                 <div class="change ${color}">${change >= 0 ? '+' : ''}${change.toFixed(2)}%</div>
             `;
         }
@@ -123,40 +105,37 @@
             if (lastPrices[data.symbol]) {
                 const diff = ((price - lastPrices[data.symbol]) / lastPrices[data.symbol]) * 100;
                 if (Math.abs(diff) >= 0.12) {
-                    const msg = `⚡ 異動：${name} ${diff > 0 ? '急拉' : '急殺'} ${diff.toFixed(2)}%`;
-                    sendPush(msg);
+                    sendPush(`⚡ ${name} ${diff > 0 ? '急拉' : '急殺'} ${diff.toFixed(2)}%`);
                 }
             }
             lastPrices[data.symbol] = price;
         }
 
         function sendPush(msg) {
-            writeLog(`[通知] ${msg}`);
-            if (PB_TOKEN.length < 10) return;
+            addLog(`[發送通知] ${msg}`);
+            if (PB_TOKEN.length < 5) return;
             fetch('https://api.pushbullet.com/v2/pushes', {
                 method: 'POST',
                 headers: { 'Access-Token': PB_TOKEN, 'Content-Type': 'application/json' },
-                body: JSON.stringify({ type: 'note', title: '台股戰情警報', body: msg, email: 'cposram@gmail.com' })
+                body: JSON.stringify({ type: 'note', title: '台股監控', body: msg, email: 'cposram@gmail.com' })
             });
         }
 
-        function writeLog(msg) {
-            const log = document.getElementById('log');
-            log.innerHTML = `[${new Date().toLocaleTimeString()}] ${msg}<br>` + log.innerHTML;
+        function addLog(msg) {
+            const box = document.getElementById('log-box');
+            box.innerHTML = `[${new Date().toLocaleTimeString()}] ${msg}<br>` + box.innerHTML;
         }
 
-        function updateStatus() {
-            document.getElementById('sys-status').innerText = `最後更新: ${new Date().toLocaleTimeString()} | 監控中`;
-        }
+        // --- 啟動邏輯 ---
+        window.onload = () => {
+            updateMarketData('level1');
+            updateMarketData('level2');
+            updateMarketData('level3');
 
-        // 初始化
-        fetchData('level3'); // 只抓一次
-        fetchData('level2'); // 初始化
-        fetchData('level1'); // 初始化
-
-        // 設定頻率
-        setInterval(() => fetchData('level1'), 60000);  // 1 分鐘
-        setInterval(() => fetchData('level2'), 300000); // 5 分鐘
+            // 分頻率更新
+            setInterval(() => updateMarketData('level1'), 60000);  // 1分鐘
+            setInterval(() => updateMarketData('level2'), 300000); // 5分鐘
+        };
     </script>
 </body>
 </html>
